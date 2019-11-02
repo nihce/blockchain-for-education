@@ -51,7 +51,13 @@ app.get('/mineNewBlock', function (req, res) {
         transactions: mihicoin.mempool,
         index: lastBlock['index'] + 1
     };
+    // START: timer for mining process
+    const hrstart = process.hrtime();
     const nonce = mihicoin.mine(previousBlockHash, currentBlockData);
+    const hrend = process.hrtime(hrstart);
+    var tmp = hrend[0]*1000 + hrend[1]/1000000; //[0]=s, [1]=ns
+    var time = tmp.toFixed(0); // 0 decimals
+    // END: timer
     const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
     const newBlock = mihicoin.createNewBlock(nonce, previousBlockHash, currentBlockHash);
     const multiplePromises = [];
@@ -81,6 +87,7 @@ app.get('/mineNewBlock', function (req, res) {
     .then(data => {
         res.json({
             // block: newBlock,
+            time: Number(time),
             nonce: nonce
         });
     }).catch((err) => {console.log(err)});
