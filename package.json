@@ -1,0 +1,25 @@
+{
+  "name": "mihicoin",
+  "version": "1.0.0",
+  "description": "Master thesis code -> a simple blockchain cryptocurrency",
+  "main": "src/node.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "node1": "node src/node.js 5001 http://localhost:5001",
+    "node2": "node src/node.js 5002 http://localhost:5002",
+    "node3": "node src/node.js 5003 http://localhost:5003",
+    "node4": "node src/node.js 5004 http://localhost:5004",
+    "node5": "node src/node.js 5005 http://localhost:5005",
+    "mining": "node src/mining_timer.js 5000"
+  },
+  "author": "Miha Klokocovnik",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4",
+    "sha256": "^0.2.0",
+    "uuid": "^3.3.2"
+  }
+}
