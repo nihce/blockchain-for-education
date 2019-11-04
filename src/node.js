@@ -7,6 +7,8 @@ const port = process.argv[2];
 const cryptocurrency = require('./blockchain');
 const sha256 = require('sha256');
 const uuid = require('uuid/v1');
+const path = require('path');
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 const currentNodeCryptoAddress = sha256(uuid().split('-').join(''));
 const mihicoin = new cryptocurrency(); //name your cryptocurrency
@@ -51,46 +53,44 @@ app.get('/mineNewBlock', function (req, res) {
         transactions: mihicoin.mempool,
         index: lastBlock['index'] + 1
     };
-    // START: timer for mining process
-    const hrstart = process.hrtime();
-    const nonce = mihicoin.mine(previousBlockHash, currentBlockData);
-    const hrend = process.hrtime(hrstart);
-    var tmp = hrend[0]*1000 + hrend[1]/1000000; //[0]=s, [1]=ns
-    var time = tmp.toFixed(0); // 0 decimals
-    // END: timer
-    const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
-    const newBlock = mihicoin.createNewBlock(nonce, previousBlockHash, currentBlockHash);
-    const multiplePromises = [];
-    mihicoin.nodes.forEach(node => {
-        const singlePromise = {
-            uri: node + '/receiveBlock',
-            method: 'POST',
-            body: { newBlock: newBlock },
-            json: true
-        };
-        multiplePromises.push(rp(singlePromise));
-    });
-    Promise.all(multiplePromises)
-    .then(data => {
-        const singlePromise = {
-            uri: mihicoin.currentNode + '/broadcastTransaction',
-            method: 'POST',
-            body: {
-                amount: 100,
-                sender: "00",
-                recipient: currentNodeCryptoAddress
-            },
-            json: true
-        };
-        return rp(singlePromise);
-    }).catch((err) => {console.log(err)})
-    .then(data => {
-        res.json({
-            // block: newBlock,
-            time: Number(time),
-            nonce: nonce
+    
+    const worker = new Worker(path.resolve('src/miner.js'), { workerData: { previousBlockHash: previousBlockHash, currentBlockData: currentBlockData }});
+
+    worker.on('message', (msg) => {
+        const nonce = msg;
+        const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
+        const newBlock = mihicoin.createNewBlock(nonce, previousBlockHash, currentBlockHash);
+        const multiplePromises = [];
+        mihicoin.nodes.forEach(node => {
+            const singlePromise = {
+                uri: node + '/receiveBlock',
+                method: 'POST',
+                body: { newBlock: newBlock },
+                json: true
+            };
+            multiplePromises.push(rp(singlePromise));
         });
-    }).catch((err) => {console.log(err)});
+        Promise.all(multiplePromises)
+        .then(data => {
+            const singlePromise = {
+                uri: mihicoin.currentNode + '/broadcastTransaction',
+                method: 'POST',
+                body: {
+                    amount: 100,
+                    sender: "00",
+                    recipient: currentNodeCryptoAddress
+                },
+                json: true
+            };
+            return rp(singlePromise);
+        }).catch((err) => {console.log(err)})
+        .then(data => {
+            res.json({
+                // block: newBlock,
+                nonce: nonce
+            });
+        }).catch((err) => {console.log(err)});
+    });
 });
 
 
