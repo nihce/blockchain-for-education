@@ -9,16 +9,17 @@ function Blockchain () {
     this.mempool = [];
     this.currentNode = currentNode;
     this.nodes = [];
-    this.createNewBlock(0, '0', '0');
+    this.createNewBlock(0, '0', '0', 4);
 };
 
 //METHODS
-Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash) {
+Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash, difficulty) {
     const newBlock = {
         index: this.allBlocks.length + 1,
         timestamp: Date.now(),
         transactions: this.mempool,
         nonce: nonce,
+        difficulty: difficulty,
         hash: hash,
         previousBlockHash: previousBlockHash
     };
@@ -28,7 +29,7 @@ Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash) 
 };
 
 Blockchain.prototype.getLastBlock = function () {
-    return this.allBlocks[this.allBlocks.length-1]; //-1, ker je prvi blok this.allBlocks[0]
+    return this.allBlocks[this.allBlocks.length-1];
 };
 
 Blockchain.prototype.createNewTransaction = function (amount, sender, recipient) {
@@ -46,10 +47,10 @@ Blockchain.prototype.addTransactionToMempool = function (transaction) {
     return 1;
 };
 
-Blockchain.prototype.mine = function (previousBlockHash, currentBlockData) {
+Blockchain.prototype.mine = function (previousBlockHash, currentBlockData, difficulty) {
     let nonce = 0;
     let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
-    while (hash.substr(0, 4) !== '0000') {
+    while (hash.substr(0, difficulty) !== ('0').repeat(difficulty)) {
         nonce++;
         hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
     };
@@ -59,6 +60,29 @@ Blockchain.prototype.mine = function (previousBlockHash, currentBlockData) {
 Blockchain.prototype.hashBlock = function (previousBlockHash, currentBlockData, nonce) {
     const hash = sha256(previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData));
     return hash;
+};
+
+Blockchain.prototype.getDiff = function () {
+    const numberOfBlockTimesToAverage = 1;
+    const desiredTimeBetweenBlocks = 30 * 1000; //[ms]
+    const acceptableDeviation = 10 * 1000; //[ms]
+
+    const previousDifficulty = this.allBlocks[this.allBlocks.length-1].difficulty;
+    let currentDifficulty = previousDifficulty;
+    
+    if (this.allBlocks.length > numberOfBlockTimesToAverage) {
+        const timeBetweenLastTwoBlocks = this.getBlockTimestampAtT(0) - this.getBlockTimestampAtT(-numberOfBlockTimesToAverage);
+        if (timeBetweenLastTwoBlocks < desiredTimeBetweenBlocks - acceptableDeviation) {
+            currentDifficulty++;
+        } else if (timeBetweenLastTwoBlocks > desiredTimeBetweenBlocks + acceptableDeviation) {
+            currentDifficulty--;
+        };
+    };
+    return currentDifficulty;
+};
+
+Blockchain.prototype.getBlockTimestampAtT = function (t) {
+    return this.allBlocks[this.allBlocks.length-1+t].timestamp;
 };
 
 module.exports = Blockchain;
