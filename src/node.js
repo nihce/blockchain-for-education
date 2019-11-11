@@ -58,10 +58,11 @@ app.get('/mineNewBlock', function (req, res) {
 
     const worker = new Worker(path.resolve('src/miner.js'), { workerData: { previousBlockHash: previousBlockHash, currentBlockData: currentBlockData, difficulty: difficulty }});
 
-    worker.on('message', (msg) => {
-        const nonce = msg;
+    worker.on('message', (workerMessage) => {
+        worker.terminate();
+        const nonce = workerMessage;
         const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
-        const newBlock = mihicoin.createNewBlock(nonce, previousBlockHash, currentBlockHash, difficulty);
+        const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions, difficulty);
         const multiplePromises = [];
         mihicoin.nodes.forEach(node => {
             const singlePromise = {
@@ -95,7 +96,6 @@ app.get('/mineNewBlock', function (req, res) {
     });
 });
 
-
 app.post('/receiveBlock', function (req, res) {
     const newBlock = req.body.newBlock;
     const lastBlock = mihicoin.getLastBlock();
@@ -103,7 +103,7 @@ app.post('/receiveBlock', function (req, res) {
     const correctIndex = lastBlock['index'] + 1 === newBlock['index'];
     if (correctHash && correctIndex) {
         mihicoin.allBlocks.push(newBlock);
-        mihicoin.mempool = [];
+        mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions);
         res.json({note: 'OK'});
     } else {
         res.json({note: 'ERROR'});

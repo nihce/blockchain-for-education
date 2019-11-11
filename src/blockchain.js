@@ -9,21 +9,21 @@ function Blockchain () {
     this.mempool = [];
     this.currentNode = currentNode;
     this.nodes = [];
-    this.createNewBlock(0, '0', '0', 4);
+    this.createNewBlock(0, 0, '0', '0', [], 4);
 };
 
 //METHODS
-Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash, difficulty) {
+Blockchain.prototype.createNewBlock = function (index, nonce, previousBlockHash, currentBlockHash, transactions, difficulty) {
     const newBlock = {
-        index: this.allBlocks.length + 1,
+        index: index,
         timestamp: Date.now(),
-        transactions: this.mempool,
+        transactions: transactions,
         nonce: nonce,
+        hash: currentBlockHash,
         difficulty: difficulty,
-        hash: hash,
         previousBlockHash: previousBlockHash
     };
-    this.mempool = [];
+    this.removeMultipleTransactionsFromMempool(transactions);
     this.allBlocks.push(newBlock);
     return newBlock;
 };
@@ -47,7 +47,16 @@ Blockchain.prototype.addTransactionToMempool = function (transaction) {
     return 1;
 };
 
+Blockchain.prototype.removeMultipleTransactionsFromMempool = function (transactionsToRemove) {
+    transactionsToRemove.forEach(transactionToRemove => {
+        const newMempool = this.mempool.filter(transactionFromMempool => transactionFromMempool.transactionId !== transactionToRemove.transactionId);
+        this.mempool = newMempool;
+    });
+    return 1;
+};
+
 Blockchain.prototype.mine = function (previousBlockHash, currentBlockData, difficulty) {
+
     let nonce = 0;
     let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
     while (hash.substr(0, difficulty) !== ('0').repeat(difficulty)) {
