@@ -9,20 +9,20 @@ function Blockchain () {
     this.mempool = [];
     this.currentNode = currentNode;
     this.nodes = [];
-    this.createNewBlock(0, '0', '0');
+    this.createNewBlock(0, 0, '0', '0', []);
 };
 
 //METHODS
-Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash) {
+Blockchain.prototype.createNewBlock = function (index, nonce, previousBlockHash, currentBlockHash, transactions) {
     const newBlock = {
-        index: this.allBlocks.length + 1,
+        index: index,
         timestamp: Date.now(),
-        transactions: this.mempool,
+        transactions: transactions,
         nonce: nonce,
-        hash: hash,
+        hash: currentBlockHash,
         previousBlockHash: previousBlockHash
     };
-    this.mempool = [];
+    this.removeMultipleTransactionsFromMempool(transactions);
     this.allBlocks.push(newBlock);
     return newBlock;
 };
@@ -43,6 +43,14 @@ Blockchain.prototype.createNewTransaction = function (amount, sender, recipient)
 
 Blockchain.prototype.addTransactionToMempool = function (transaction) {
     this.mempool.push(transaction);
+    return 1;
+};
+
+Blockchain.prototype.removeMultipleTransactionsFromMempool = function (transactionsToRemove) {
+    transactionsToRemove.forEach(transactionToRemove => {
+        const newMempool = this.mempool.filter(transactionFromMempool => transactionFromMempool.transactionId !== transactionToRemove.transactionId);
+        this.mempool = newMempool;
+    });
     return 1;
 };
 
