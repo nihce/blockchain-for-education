@@ -9,7 +9,20 @@ const sha256 = require('sha256');
 const uuid = require('uuid/v1');
 const path = require('path');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+const fs = require('fs');
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
+const pathToAnalyticsFile = path.resolve('data/analytics.csv');
+fs.truncate(pathToAnalyticsFile, 0, function(){});
+const analyticsWriter = createCsvWriter({
+  path: pathToAnalyticsFile,
+  header: [
+    {id: 'blockIndex', title: 'BlockIndex'},
+    {id: 'timestamp', title: 'Timestamp'},
+    {id: 'difficulty', title: 'Difficulty'},
+    {id: 'numberOfTransactions', title: 'NumberOfTransactions'},
+  ]
+});
 const currentNodeCryptoAddress = sha256(uuid().split('-').join(''));
 const mihicoin = new cryptocurrency(); //name your cryptocurrency
 
@@ -50,7 +63,6 @@ app.get('/mineNewBlock', function (req, res) {
     const lastBlock = mihicoin.getLastBlock();
     const previousBlockHash = lastBlock['hash'];
     const difficulty = mihicoin.getDiff();
-    console.log("/mineNewBlock: " + difficulty);
     const currentBlockData = {
         transactions: mihicoin.mempool,
         index: lastBlock['index'] + 1
@@ -63,6 +75,12 @@ app.get('/mineNewBlock', function (req, res) {
         const nonce = workerMessage;
         const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
         const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions, difficulty);
+        analyticsWriter.writeRecords([{
+            blockIndex: newBlock.index,
+            timestamp: newBlock.timestamp,
+            difficulty: newBlock.difficulty,
+            numberOfTransactions: newBlock.transactions.length
+        }]);
         const multiplePromises = [];
         mihicoin.nodes.forEach(node => {
             const singlePromise = {
@@ -102,6 +120,12 @@ app.post('/receiveBlock', function (req, res) {
     const correctHash = lastBlock.hash === newBlock.previousBlockHash;
     const correctIndex = lastBlock['index'] + 1 === newBlock['index'];
     if (correctHash && correctIndex) {
+        analyticsWriter.writeRecords([{
+            blockIndex: newBlock.index,
+            timestamp: newBlock.timestamp,
+            difficulty: newBlock.difficulty,
+            numberOfTransactions: newBlock.transactions.length
+        }]);
         mihicoin.allBlocks.push(newBlock);
         mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions);
         res.json({note: 'OK'});
