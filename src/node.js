@@ -49,18 +49,20 @@ app.post('/receiveTransaction', function (req, res) {
 app.get('/mineNewBlock', function (req, res) {
     const lastBlock = mihicoin.getLastBlock();
     const previousBlockHash = lastBlock['hash'];
+    const difficulty = mihicoin.getDiff();
+    console.log("/mineNewBlock: " + difficulty);
     const currentBlockData = {
         transactions: mihicoin.mempool,
         index: lastBlock['index'] + 1
     };
 
-    const worker = new Worker(path.resolve('src/miner.js'), { workerData: { previousBlockHash: previousBlockHash, currentBlockData: currentBlockData }});
+    const worker = new Worker(path.resolve('src/miner.js'), { workerData: { previousBlockHash: previousBlockHash, currentBlockData: currentBlockData, difficulty: difficulty }});
 
     worker.on('message', (workerMessage) => {
         worker.terminate();
         const nonce = workerMessage;
         const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
-        const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions);
+        const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions, difficulty);
         const multiplePromises = [];
         mihicoin.nodes.forEach(node => {
             const singlePromise = {
