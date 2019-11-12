@@ -59,7 +59,7 @@ app.post('/receiveTransaction', function (req, res) {
     res.json({note: 'OK'})
 });
 
-app.get('/mineNewBlock', function (req, res) {
+app.get('/startMining', function (req, res) {
     const lastBlock = mihicoin.getLastBlock();
     const previousBlockHash = lastBlock['hash'];
     const difficulty = mihicoin.getDiff();
@@ -75,43 +75,41 @@ app.get('/mineNewBlock', function (req, res) {
         const nonce = workerMessage;
         const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
         const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions, difficulty);
-        analyticsWriter.writeRecords([{
-            blockIndex: newBlock.index,
-            timestamp: newBlock.timestamp,
-            difficulty: newBlock.difficulty,
-            numberOfTransactions: newBlock.transactions.length
-        }]);
-        const multiplePromises = [];
-        mihicoin.nodes.forEach(node => {
-            const singlePromise = {
-                uri: node + '/receiveBlock',
-                method: 'POST',
-                body: { newBlock: newBlock },
-                json: true
-            };
-            multiplePromises.push(rp(singlePromise));
-        });
-        Promise.all(multiplePromises)
-        .then(data => {
-            const singlePromise = {
-                uri: mihicoin.currentNode + '/broadcastTransaction',
-                method: 'POST',
-                body: {
-                    amount: 100,
-                    sender: "00",
-                    recipient: currentNodeCryptoAddress
-                },
-                json: true
-            };
-            return rp(singlePromise);
-        }).catch((err) => {console.log(err)})
-        .then(data => {
-            res.json({
-                // block: newBlock,
-                nonce: nonce
+        if (newBlock !== 0) {
+            analyticsWriter.writeRecords([{
+                blockIndex: newBlock.index,
+                timestamp: newBlock.timestamp,
+                difficulty: newBlock.difficulty,
+                numberOfTransactions: newBlock.transactions.length
+            }]);
+            const multiplePromises = [];
+            mihicoin.nodes.forEach(node => {
+                const singlePromise = {
+                    uri: node + '/receiveBlock',
+                    method: 'POST',
+                    body: { newBlock: newBlock },
+                    json: true
+                };
+                multiplePromises.push(rp(singlePromise));
             });
-        }).catch((err) => {console.log(err)});
+            Promise.all(multiplePromises)
+            .then(data => {
+                const singlePromise = {
+                    uri: mihicoin.currentNode + '/broadcastTransaction',
+                    method: 'POST',
+                    body: {
+                        amount: 100,
+                        sender: "00",
+                        recipient: currentNodeCryptoAddress
+                    },
+                    json: true
+                };
+                return rp(singlePromise);
+            }).catch((err) => {console.log(err)});
+        };
+        startNewMiningCycleAfter(20000);
     });
+    res.json({note: 'Mining process started...'});
 });
 
 app.post('/receiveBlock', function (req, res) {
@@ -120,6 +118,7 @@ app.post('/receiveBlock', function (req, res) {
     const correctHash = lastBlock.hash === newBlock.previousBlockHash;
     const correctIndex = lastBlock['index'] + 1 === newBlock['index'];
     if (correctHash && correctIndex) {
+        worker.terminate();
         analyticsWriter.writeRecords([{
             blockIndex: newBlock.index,
             timestamp: newBlock.timestamp,
@@ -127,7 +126,8 @@ app.post('/receiveBlock', function (req, res) {
             numberOfTransactions: newBlock.transactions.length
         }]);
         mihicoin.allBlocks.push(newBlock);
-        mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions);
+        mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions)
+        .then(startNewMiningCycleAfter(20000));
         res.json({note: 'OK'});
     } else {
         res.json({note: 'ERROR'});
@@ -193,3 +193,28 @@ app.post('/receiveAllNodes', function (req, res) {
 app.listen(port, function() {
     console.log(`This node is running on: localhost/${port}`);
 });
+
+
+
+
+
+
+
+
+
+
+async function startNewMiningCycleAfter(miliseconds){
+    await sleep(miliseconds)
+    const singlePromise = {
+        uri: mihicoin.currentNode + '/startMining',
+        method: 'GET',
+        json: true
+    };
+    return rp(singlePromise);
+};
+
+function sleep(ms){
+    return new Promise(resolve=>{
+        setTimeout(resolve,ms);
+    });
+};
