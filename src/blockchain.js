@@ -23,9 +23,21 @@ Blockchain.prototype.createNewBlock = function (index, nonce, previousBlockHash,
         difficulty: difficulty,
         previousBlockHash: previousBlockHash
     };
-    this.removeMultipleTransactionsFromMempool(transactions);
-    this.allBlocks.push(newBlock);
-    return newBlock;
+    if (this.allBlocks.length !== 0) {
+        const lastBlock = this.getLastBlock();
+        const correctHash = lastBlock.hash === newBlock.previousBlockHash;
+        const correctIndex = lastBlock.index + 1 === newBlock.index;
+        if (correctHash && correctIndex) {
+            this.allBlocks.push(newBlock);
+            this.removeMultipleTransactionsFromMempool(transactions);
+            return newBlock;
+        } else {
+            return 0;
+        };
+    } else {
+        this.allBlocks.push(newBlock);
+        return newBlock;
+    }
 };
 
 Blockchain.prototype.getLastBlock = function () {
@@ -56,7 +68,6 @@ Blockchain.prototype.removeMultipleTransactionsFromMempool = function (transacti
 };
 
 Blockchain.prototype.mine = function (previousBlockHash, currentBlockData, difficulty) {
-
     let nonce = 0;
     let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
     while (hash.substr(0, difficulty) !== ('0').repeat(difficulty)) {
@@ -78,12 +89,12 @@ Blockchain.prototype.getDiff = function () {
 
     const previousDifficulty = this.allBlocks[this.allBlocks.length-1].difficulty;
     let currentDifficulty = previousDifficulty;
-    
+
     if (this.allBlocks.length > numberOfBlockTimesToAverage) {
-        const timeBetweenLastTwoBlocks = this.getBlockTimestampAtT(0) - this.getBlockTimestampAtT(-numberOfBlockTimesToAverage);
-        if (timeBetweenLastTwoBlocks < desiredTimeBetweenBlocks - acceptableDeviation) {
+        const timeBetweenBlocks = this.getBlockTimestampAtT(0) - this.getBlockTimestampAtT(-numberOfBlockTimesToAverage);
+        if (timeBetweenBlocks < desiredTimeBetweenBlocks - acceptableDeviation) {
             currentDifficulty++;
-        } else if (timeBetweenLastTwoBlocks > desiredTimeBetweenBlocks + acceptableDeviation) {
+        } else if (timeBetweenBlocks > desiredTimeBetweenBlocks + acceptableDeviation) {
             currentDifficulty--;
         };
     };
