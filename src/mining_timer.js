@@ -4,7 +4,6 @@ const app = express();
 const rp = require('request-promise');
 const bodyParser = require('body-parser');
 const port = process.argv[2];
-const cryptocurrency = require('./blockchain');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false}));

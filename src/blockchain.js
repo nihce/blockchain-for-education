@@ -84,7 +84,7 @@ Blockchain.prototype.hashBlock = function (previousBlockHash, currentBlockData, 
 
 Blockchain.prototype.getDiff = function () {
     const numberOfBlockTimesToAverage = 1;
-    const desiredTimeBetweenBlocks = 30 * 1000; //[ms]
+    const desiredTimeBetweenBlocks = 20 * 1000; //[ms]
     const acceptableDeviation = 10 * 1000; //[ms]
 
     const previousDifficulty = this.allBlocks[this.allBlocks.length-1].difficulty;
