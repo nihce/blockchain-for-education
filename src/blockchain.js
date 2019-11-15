@@ -68,7 +68,6 @@ Blockchain.prototype.removeMultipleTransactionsFromMempool = function (transacti
 };
 
 Blockchain.prototype.mine = function (previousBlockHash, currentBlockData, difficulty) {
-
     let nonce = 0;
     let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
     while (hash.substr(0, difficulty) !== ('0').repeat(difficulty)) {
@@ -92,10 +91,10 @@ Blockchain.prototype.getDiff = function () {
     let currentDifficulty = previousDifficulty;
 
     if (this.allBlocks.length > numberOfBlockTimesToAverage) {
-        const timeBetweenLastTwoBlocks = this.getBlockTimestampAtT(0) - this.getBlockTimestampAtT(-numberOfBlockTimesToAverage);
-        if (timeBetweenLastTwoBlocks < desiredTimeBetweenBlocks - acceptableDeviation) {
+        const timeBetweenBlocks = this.getBlockTimestampAtT(0) - this.getBlockTimestampAtT(-numberOfBlockTimesToAverage);
+        if (timeBetweenBlocks < desiredTimeBetweenBlocks - acceptableDeviation) {
             currentDifficulty++;
-        } else if (timeBetweenLastTwoBlocks > desiredTimeBetweenBlocks + acceptableDeviation) {
+        } else if (timeBetweenBlocks > desiredTimeBetweenBlocks + acceptableDeviation) {
             currentDifficulty--;
         };
     };

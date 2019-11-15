@@ -26,6 +26,7 @@ const analyticsWriter = createCsvWriter({
 const currentNodeCryptoAddress = sha256(uuid().split('-').join(''));
 const mihicoin = new cryptocurrency(); //name your cryptocurrency
 
+//ENDPOINTS
 //parsing from JSON to object when receiving a request
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false}));
@@ -194,15 +195,7 @@ app.listen(port, function() {
     console.log(`This node is running on: localhost/${port}`);
 });
 
-
-
-
-
-
-
-
-
-
+//FUNCTIONS
 async function startNewMiningCycleAfter(miliseconds){
     await sleep(miliseconds)
     const singlePromise = {
