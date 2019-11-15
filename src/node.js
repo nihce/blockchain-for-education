@@ -108,7 +108,7 @@ app.get('/startMining', function (req, res) {
                 return rp(singlePromise);
             }).catch((err) => {console.log(err)});
         };
-        startNewMiningCycleAfter(20000);
+        startNewMiningCycleAfter(5000);
     });
     res.json({note: 'Mining process started...'});
 });
@@ -128,7 +128,7 @@ app.post('/receiveBlock', function (req, res) {
         }]);
         mihicoin.allBlocks.push(newBlock);
         mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions)
-        .then(startNewMiningCycleAfter(20000));
+        .then(startNewMiningCycleAfter(5000));
         res.json({note: 'OK'});
     } else {
         res.json({note: 'ERROR'});
