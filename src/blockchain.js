@@ -2,6 +2,8 @@
 const sha256 = require('sha256');
 const currentNode = process.argv[3];
 const uuid = require('uuid/v1');
+const anyBase = require('any-base');
+const hex2bin = anyBase(anyBase.HEX, anyBase.BIN);
 
 //CONSTRUCTOR
 function Blockchain () {
@@ -69,21 +71,25 @@ Blockchain.prototype.removeMultipleTransactionsFromMempool = function (transacti
 
 Blockchain.prototype.mine = function (previousBlockHash, currentBlockData, difficulty) {
     let nonce = 0;
-    let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
+    let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce, true);
     while (hash.substr(0, difficulty) !== ('0').repeat(difficulty)) {
         nonce++;
-        hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
+        hash = this.hashBlock(previousBlockHash, currentBlockData, nonce, true);
     };
     return nonce;
 };
 
-Blockchain.prototype.hashBlock = function (previousBlockHash, currentBlockData, nonce) {
+Blockchain.prototype.hashBlock = function (previousBlockHash, currentBlockData, nonce, binary) {
     const hash = sha256(previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData));
-    return hash;
+    if (binary) {
+        return hex2bin('1' + hash).substr(1); //adding 1 and cuttinig it after, so the 0 at begining gets transformed to 0000
+    } else {
+        return hash
+    }
 };
 
 Blockchain.prototype.getDiff = function () {
-    const numberOfBlockTimesToAverage = 1;
+    const numberOfBlockTimesToAverage = 2;
     const desiredTimeBetweenBlocks = 20 * 1000; //[ms]
     const acceptableDeviation = 10 * 1000; //[ms]
 
