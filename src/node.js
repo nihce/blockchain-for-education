@@ -74,7 +74,7 @@ app.get('/startMining', function (req, res) {
     worker.on('message', (workerMessage) => {
         worker.terminate();
         const nonce = workerMessage;
-        const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce);
+        const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce, false);
         const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions, difficulty);
         if (newBlock !== 0) {
             analyticsWriter.writeRecords([{
