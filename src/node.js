@@ -20,6 +20,7 @@ const analyticsWriter = createCsvWriter({
     {id: 'blockIndex', title: 'BlockIndex'},
     {id: 'timestamp', title: 'Timestamp'},
     {id: 'difficulty', title: 'Difficulty'},
+    {id: 'nonce', title: 'Nonce'},
     {id: 'numberOfTransactions', title: 'NumberOfTransactions'},
   ]
 });
@@ -81,6 +82,7 @@ app.get('/startMining', function (req, res) {
                 blockIndex: newBlock.index,
                 timestamp: newBlock.timestamp,
                 difficulty: newBlock.difficulty,
+                nonce: newBlock.nonce,
                 numberOfTransactions: newBlock.transactions.length
             }]);
             const multiplePromises = [];
@@ -108,7 +110,7 @@ app.get('/startMining', function (req, res) {
                 return rp(singlePromise);
             }).catch((err) => {console.log(err)});
         };
-        startNewMiningCycleAfter(5000);
+        startNewMiningCycleAfter(1000);
     });
     res.json({note: 'Mining process started...'});
 });
@@ -124,11 +126,12 @@ app.post('/receiveBlock', function (req, res) {
             blockIndex: newBlock.index,
             timestamp: newBlock.timestamp,
             difficulty: newBlock.difficulty,
+            nonce: newBlock.nonce,
             numberOfTransactions: newBlock.transactions.length
         }]);
         mihicoin.allBlocks.push(newBlock);
         mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions)
-        .then(startNewMiningCycleAfter(5000));
+        .then(startNewMiningCycleAfter(1000));
         res.json({note: 'OK'});
     } else {
         res.json({note: 'ERROR'});
