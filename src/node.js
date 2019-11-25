@@ -25,7 +25,10 @@ const analyticsWriter = createCsvWriter({
   ]
 });
 const currentNodeCryptoAddress = sha256(uuid().split('-').join(''));
+console.log('currentNodeCryptoAddress:', currentNodeCryptoAddress);
 const mihicoin = new cryptocurrency(); //name your cryptocurrency
+
+let worker = 0; //has to be global
 
 //ENDPOINTS
 //parsing from JSON to object when receiving a request
@@ -45,11 +48,12 @@ app.post('/broadcastTransaction', function (req, res) {
             uri: node + '/receiveTransaction',
             method: 'POST',
             body: newTransaction,
-            json: true
+            json: true,
+            simple: false
         };
         multiplePromises.push(rp(singlePromise));
     });
-    Promise.all(multiplePromises)
+    Promise.allSettled(multiplePromises) //Promise.all would break execution if one of nodes is no longer online
     .then(data => {
         res.json({note: 'OK'});
     }).catch((err) => {console.log(err)});
@@ -70,14 +74,18 @@ app.get('/startMining', function (req, res) {
         index: lastBlock['index'] + 1
     };
 
-    const worker = new Worker(path.resolve('src/miner.js'), { workerData: { previousBlockHash: previousBlockHash, currentBlockData: currentBlockData, difficulty: difficulty }});
+    worker = new Worker(path.resolve('src/miner.js'), { workerData: { previousBlockHash: previousBlockHash, currentBlockData: currentBlockData, difficulty: difficulty }});
 
     worker.on('message', (workerMessage) => {
         worker.terminate();
         const nonce = workerMessage;
         const currentBlockHash = mihicoin.hashBlock(previousBlockHash, currentBlockData, nonce, false);
         const newBlock = mihicoin.createNewBlock(currentBlockData.index, nonce, previousBlockHash, currentBlockHash, currentBlockData.transactions, difficulty);
-        if (newBlock !== 0) {
+        //check if block is relevant and correct
+        const correctHash = lastBlock.hash === newBlock.previousBlockHash;
+        const correctIndex = lastBlock['index'] + 1 === newBlock['index'];
+        if ((newBlock !== 0) && correctHash && correctIndex) {
+            // console.log('Mined new block No.:', newBlock['index']);
             analyticsWriter.writeRecords([{
                 blockIndex: newBlock.index,
                 timestamp: newBlock.timestamp,
@@ -91,11 +99,12 @@ app.get('/startMining', function (req, res) {
                     uri: node + '/receiveBlock',
                     method: 'POST',
                     body: { newBlock: newBlock },
-                    json: true
+                    json: true,
+                    simple: false
                 };
                 multiplePromises.push(rp(singlePromise));
             });
-            Promise.all(multiplePromises)
+            Promise.allSettled(multiplePromises)
             .then(data => {
                 const singlePromise = {
                     uri: mihicoin.currentNode + '/broadcastTransaction',
@@ -110,7 +119,7 @@ app.get('/startMining', function (req, res) {
                 return rp(singlePromise);
             }).catch((err) => {console.log(err)});
         };
-        startNewMiningCycleAfter(1000);
+        startNewMiningCycleAfter(1000 + getRandomInt(2000));
     });
     res.json({note: 'Mining process started...'});
 });
@@ -120,8 +129,11 @@ app.post('/receiveBlock', function (req, res) {
     const lastBlock = mihicoin.getLastBlock();
     const correctHash = lastBlock.hash === newBlock.previousBlockHash;
     const correctIndex = lastBlock['index'] + 1 === newBlock['index'];
+    // console.log('Received new block No.:', newBlock['index']);
     if (correctHash && correctIndex) {
-        worker.terminate();
+        if (worker !== 0) {
+            worker.terminate(); //stop mining beacause received block is correct
+        };
         analyticsWriter.writeRecords([{
             blockIndex: newBlock.index,
             timestamp: newBlock.timestamp,
@@ -131,7 +143,7 @@ app.post('/receiveBlock', function (req, res) {
         }]);
         mihicoin.allBlocks.push(newBlock);
         mihicoin.removeMultipleTransactionsFromMempool(newBlock.transactions)
-        .then(startNewMiningCycleAfter(1000));
+        startNewMiningCycleAfter(1000 + getRandomInt(2000));
         res.json({note: 'OK'});
     } else {
         res.json({note: 'ERROR'});
@@ -149,11 +161,12 @@ app.post('/broadcastNewNode', function (req, res) {
             uri: node + '/receiveNewNode',
             method: 'POST',
             body: { newNode: newNode },
-            json: true
+            json: true,
+            simple: false
         };
         multiplePromises.push(rp(singlePromise));
     });
-    Promise.all(multiplePromises)
+    Promise.allSettled(multiplePromises)  //Promise.all would break execution if one of nodes is no longer online
     .then(data => {
         const allKnownNodes = {
             uri: newNode + '/receiveAllNodes',
@@ -163,7 +176,8 @@ app.post('/broadcastNewNode', function (req, res) {
                 allBlocks: mihicoin.allBlocks,
                 mempool: mihicoin.mempool
             },
-            json: true
+            json: true,
+            simple: false
         };
         return rp(allKnownNodes);
     }).catch((err) => {console.log(err)})
@@ -184,7 +198,7 @@ app.post('/receiveNewNode', function (req, res) {
 
 app.post('/receiveAllNodes', function (req, res) {
     mihicoin.allBlocks = req.body.allBlocks;
-    mihicoin.mempool = req.body.mempool
+    mihicoin.mempool = req.body.mempool;
     const allNetworkNodes = req.body.allNetworkNodes;
     allNetworkNodes.forEach(newNode => {
         if (mihicoin.nodes.indexOf(newNode) == -1 && mihicoin.currentNode !== newNode) {
@@ -200,7 +214,7 @@ app.listen(port, function() {
 
 //FUNCTIONS
 async function startNewMiningCycleAfter(miliseconds){
-    await sleep(miliseconds)
+    await sleep(miliseconds);
     const singlePromise = {
         uri: mihicoin.currentNode + '/startMining',
         method: 'GET',
@@ -214,3 +228,7 @@ function sleep(ms){
         setTimeout(resolve,ms);
     });
 };
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
