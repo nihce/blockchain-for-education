@@ -76,8 +76,13 @@ app.get('/startMining', function(req, res) {
 	const lastBlock = mihicoin.getLastBlock();
 	const previousBlockHash = lastBlock['hash'];
 	const difficulty = mihicoin.getDiff();
+	const miningReward = {
+		amount: 100,
+		sender: '00',
+		recipient: currentNodeCryptoAddress
+	};
 	const currentBlockData = {
-		transactions: mihicoin.mempool,
+		transactions: [...mihicoin.mempool, miningReward],
 		index: lastBlock['index'] + 1
 	};
 
@@ -113,23 +118,9 @@ app.get('/startMining', function(req, res) {
 				};
 				multiplePromises.push(rp(singlePromise));
 			});
-			Promise.allSettled(multiplePromises)
-				.then(() => {
-					const singlePromise = {
-						uri: mihicoin.currentNode + '/broadcastTransaction',
-						method: 'POST',
-						body: {
-							amount: 100,
-							sender: '00',
-							recipient: currentNodeCryptoAddress
-						},
-						json: true
-					};
-					return rp(singlePromise);
-				})
-				.catch(err => {
-					console.log(err);
-				});
+			Promise.allSettled(multiplePromises).catch(err => {
+				console.log(err);
+			});
 		}
 		startNewMiningCycleAfter(1000 + getRandomInt(2000));
 	});
