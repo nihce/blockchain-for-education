@@ -37,7 +37,7 @@ let worker = 0; //has to be global
 //ENDPOINTS
 //parsing from JSON to object when receiving a request
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: false, parameterLimit: 100000, limit: '1gb' }));
 
 app.get('/mihicoin', function(req, res) {
 	res.send(mihicoin);
