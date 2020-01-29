@@ -86,7 +86,7 @@ Blockchain.prototype.mine = function(previousBlockHash, currentBlockData, diffic
 Blockchain.prototype.hashBlock = function(previousBlockHash, currentBlockData, nonce, binary) {
 	const hash = sha256(previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData));
 	if (binary) {
-		return hex2bin('1' + hash).substr(1); //adding 1 and cuttinig it after, so the 0 at begining gets transformed to 0000
+		return hex2bin('1' + hash).substr(1); //adding 1 and cutting it after, so the 0 at beginning gets transformed to 0000
 	} else {
 		return hash;
 	}

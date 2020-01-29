@@ -8,7 +8,7 @@ const cryptocurrency = require('./blockchain');
 const sha256 = require('sha256');
 const uuid = require('uuid/v1');
 const path = require('path');
-const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+const { Worker } = require('worker_threads');
 const fs = require('fs');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
@@ -58,7 +58,7 @@ app.post('/broadcastTransaction', function(req, res) {
 		multiplePromises.push(rp(singlePromise));
 	});
 	Promise.allSettled(multiplePromises) //Promise.all would break execution if one of nodes is no longer online
-		.then(data => {
+		.then(() => {
 			res.json({ note: 'OK' });
 		})
 		.catch(err => {
@@ -114,7 +114,7 @@ app.get('/startMining', function(req, res) {
 				multiplePromises.push(rp(singlePromise));
 			});
 			Promise.allSettled(multiplePromises)
-				.then(data => {
+				.then(() => {
 					const singlePromise = {
 						uri: mihicoin.currentNode + '/broadcastTransaction',
 						method: 'POST',
@@ -144,7 +144,7 @@ app.post('/receiveBlock', function(req, res) {
 	// console.log('Received new block No.:', newBlock['index']);
 	if (correctHash && correctIndex) {
 		if (worker !== 0) {
-			worker.terminate(); //stop mining beacause received block is correct
+			worker.terminate(); //stop mining because received block is correct
 		}
 		analyticsWriter.writeRecords([
 			{
@@ -181,7 +181,7 @@ app.post('/broadcastNewNode', function(req, res) {
 		multiplePromises.push(rp(singlePromise));
 	});
 	Promise.allSettled(multiplePromises) //Promise.all would break execution if one of nodes is no longer online
-		.then(data => {
+		.then(() => {
 			const allKnownNodes = {
 				uri: newNode + '/receiveAllNodes',
 				method: 'POST',
@@ -198,7 +198,7 @@ app.post('/broadcastNewNode', function(req, res) {
 		.catch(err => {
 			console.log(err);
 		})
-		.then(data => {
+		.then(() => {
 			res.json({ note: 'OK' });
 		})
 		.catch(err => {
@@ -233,8 +233,8 @@ app.listen(port, function() {
 });
 
 //FUNCTIONS
-async function startNewMiningCycleAfter(miliseconds) {
-	await sleep(miliseconds);
+async function startNewMiningCycleAfter(milliseconds) {
+	await sleep(milliseconds);
 	const singlePromise = {
 		uri: mihicoin.currentNode + '/startMining',
 		method: 'GET',
