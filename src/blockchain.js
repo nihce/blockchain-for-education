@@ -75,9 +75,10 @@ Blockchain.prototype.removeMultipleTransactionsFromMempool = function(transactio
 
 Blockchain.prototype.mine = function(previousBlockHash, currentBlockData, difficulty) {
 	let nonce = 0;
+	const seed = Math.floor(Math.random() * 1000);
 	let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce, true);
 	while (hash.substr(0, difficulty) !== '0'.repeat(difficulty)) {
-		nonce++;
+		nonce = Math.random() * seed;
 		hash = this.hashBlock(previousBlockHash, currentBlockData, nonce, true);
 	}
 	return nonce;
